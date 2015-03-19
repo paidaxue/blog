@@ -259,8 +259,7 @@ class Posts extends ST_Auth_Controller{
             }
         }
         
-        $insert_tags = $this->metas_mdl->scan_tags($tags);
-      //$insert_tags = $this->metas_mdl->scan_tags($tags);  
+        $insert_tags = $this->metas_mdl->scan_tags($tags);  
         
         if($insert_tags){
             
