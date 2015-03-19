@@ -28,6 +28,7 @@ class Posts extends ST_Auth_Controller{
         
         
         if(FALSE === $this->uri->segment(4)){
+//             var_dump($this->uri->segment(3));-------string 'write' (length=5)
             $this->_write();
         }else{
             $pid = $this->security->xss_clean($this->uri->segment(4));
@@ -39,9 +40,12 @@ class Posts extends ST_Auth_Controller{
         
         $this->_data['page_title'] = '撰写行文章';
                 
-        $this->_data['all_categories'] = $this->metas_mdl->list_metas('category');        
+        $this->_data['all_categories'] = $this->metas_mdl->list_metas('category');
+//         var_dump($this->_data['all_categories']->result());               
         $this->_data['all_tags'] = $this->metas_mdl->list_metas('tag');        
         $this->_data['attachments'] = $this->posts_mdl->get_posts('attachments','unattached',$this->user->uid,100,0);
+//         var_dump($this->user->uid);------string '1' (length=1)
+//         var_dump($this->_data['attachments']->result());
         
         $this->_data['allow_comment'] = 1;  //允许被评论；
         $this->_data['allow_ping'] = 1;     //允许被引用；
@@ -60,7 +64,7 @@ class Posts extends ST_Auth_Controller{
             	
             //加载撰写文章视图
             $this->load->view('admin/write_post',$this->_data);
-        }else{
+        }else{           
             $this->_insert_post();                       
         }
     }
@@ -81,6 +85,7 @@ class Posts extends ST_Auth_Controller{
         
         //获取表单数据
         $content = $this->_get_form_data();
+        
         //文章类型
         $otent['type'] = 'post';
         
@@ -113,7 +118,9 @@ class Posts extends ST_Auth_Controller{
         
         //将文章写入数据库,如果插入成功,返回文章的pid,如果失败,返回FALSE
         $insert_id = $this->posts_mdl->add_post($insert_struct);
+//         var_dump($insert_id);
         
+        //根据pid来插入slug缩略名
         $this->_apply_slug($insert_id);
         
         //如果文章写入数据库成功
@@ -141,7 +148,7 @@ class Posts extends ST_Auth_Controller{
             redirect('admin/posts/write'.'/'.$pid);
         }else{
             $this->session->set_flashdata('success','文章<b>'.$content['title'].'</b>修改成功');
-            redirect('admin/posts/manage');
+//             redirect('admin/posts/manage');
         }
     }
     
@@ -196,10 +203,11 @@ class Posts extends ST_Auth_Controller{
         //array_map()是php方法,对传入的$categories参数,应用trim()方法,再返回结果,这个是对参数左右去掉空格
         //array_unique()是对里面的参数去掉重复的值        
         $categories = array_unique(array_map('trim',$categories));
-      //$categories = array_unique(array_map('trim',$categories));  
         
         
         $this->metas_mdl->get_metas($pid);
+        
+//         var_dump($this->metas_mdl->metas['category']);
         
         $exist_categories = Common::array_flatten($this->metas_mdl->metas['category'],'mid');
         
@@ -208,6 +216,7 @@ class Posts extends ST_Auth_Controller{
                 
                 $this->metas_mdl->remove_relationship_strict($pid,$category);
                 if($before_count){
+                    //meta个数自减一
                     $this->metas_mdl->meta_num_minus($category);
                 }
             }

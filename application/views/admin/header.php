@@ -4,7 +4,7 @@
 <html>
  <head>
     <meta charset="utf-8">
-    <title>我的博客标题</title>
+    <title></title>
 
 </head>
 <body >

@@ -27,6 +27,19 @@ class Posts_mdl extends CI_Model{
         return ($this->db->affected_rows() == 1 ? $this->db->insert_id() : FALSE);
     }
     
+    
+    //获取内容列表
+    /**
+     *
+     * @param string $type			内容类型:'post','attachment','page'文章/附件/独立页面
+     * @param string $status		内容状态:'publish','draft','unattached','attached','waiting'发布/草稿/未归档/等待审核
+     * @param string $author_id		作者ID(可选)
+     * @param string $limit			条数(可选)
+     * @param string $offset		偏移量(可选)
+     * @param number $category_filter	需要过滤的栏目ID(可选)
+     * @param string $title_filter	需要过滤的标题关键字(可选)
+     * @param string $feed_filter	是否显示在feed里面(可选)
+     */
     public function get_posts($type='post',$status='publish',$author_id=NULL,$limit=NULL,$offset=NULL,$category_filter=0,$title_filter='',$feed_filter=FALSE)
     {
         
@@ -67,6 +80,8 @@ class Posts_mdl extends CI_Model{
         
         return $this->db->get(self::TBL_POSTS);        
     }
+    
+    
     
     //更新文章
     public function update_post($pid,$data){
