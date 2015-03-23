@@ -101,6 +101,36 @@ class Common{
         return date('n月j日',$from);
 
     }
+    
+    /**
+     * 格式化metas输出
+     *
+     * @access public
+     * @param array - $metas metas内容数组
+     * @param string - $split 分割符
+     * @param boolean - $link 是否输出连接
+     * @return string - 格式化输出
+     */
+    public static function format_metas($metas = array(), $split = ',', $link = true)
+    {
+    
+        $format = '';
+        	
+        if ($metas)
+        {
+            $result = array();
+    
+            foreach ($metas as $meta)
+            {
+                $result[] = $link ? '<a href="' . site_url($meta['type'].'/'.$meta['slug']) . '">'
+                    . $meta['name'] . '</a>' : $meta['name'];
+            }
+    
+            $format = implode($split, $result);
+        }
+    
+        return $format;
+    }
 }
 
 

@@ -21,16 +21,6 @@ class Stats{
 		return $this->_CI->metas_mdl->count_metas();
 	}
 	
-	//根据作者计算评论个数
-	/* public function count_cmts_by_owner($type = 'comment',$status = 'approved',$uid=NULL){
-		return $this->_CI->comments_mdl->get_cmts_by_owner($type,$status,$uid,10000,0)->num_rows();
-	}
-	 */
-	
-	//计算评论个数
-	/* public function count_cmts($pid,$type='comment',$status='approved'){
-		return $this->_CI->comments_mdl->get_cmts($pid,$type,$status,10000,0)->num_rows();
-	} */
 	
 	//计算文章个数
 	public function count_posts($type='post',$status='publish',$uid=NULL){

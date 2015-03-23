@@ -135,7 +135,7 @@ class Metas_mdl extends CI_Model{
                               'pid'=>intval($pid),
                               'mid'=>intval($mid)
                           ));
-        return ($this->db->affected_rows == 1) ? TRUE : FALSE;
+        return ($this->db->affected_rows() == 1) ? TRUE : FALSE;
     }
     
     

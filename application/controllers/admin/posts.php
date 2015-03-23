@@ -148,7 +148,7 @@ class Posts extends ST_Auth_Controller{
             redirect('admin/posts/write'.'/'.$pid);
         }else{
             $this->session->set_flashdata('success','文章<b>'.$content['title'].'</b>修改成功');
-//             redirect('admin/posts/manage');
+            redirect('admin/posts/manage');
         }
     }
     
@@ -266,7 +266,7 @@ class Posts extends ST_Auth_Controller{
             foreach($insert_tags as $tag){
                 $this->metas_mdl->add_relationship(array('pid'=>$pid,'mid'=>$tag));
                 
-                if($agter_count){
+                if($after_count){
                     $this->metas_mdl->meta_num_plus($tag);
                 }
             }           
@@ -356,6 +356,7 @@ class Posts extends ST_Auth_Controller{
             
             //设置是否查看全部文章
 			$all_posts = $this->input->get('__all_posts',TRUE);
+			var_dump($status);//string 'publish' (length=7)
             
         	if(!empty($all_posts)){
 				
@@ -376,11 +377,14 @@ class Posts extends ST_Auth_Controller{
             
             //如果传入的参数$status不存在数组,那么自动跳转到文章管理页面
         	if(!in_array($status,array('publish','draft','waiting'))){
+//         	    var_dump($status);//string 'publish' (length=7)
+
 				redirect('admin/posts/manage');
 			}
             
             //分类过滤
 			$category_filter = $this->input->get('category',TRUE);
+						
 			$category_filter = (!empty($category_filter)) ? intval($category_filter):0;
             
         	//如果传入了文章类型过滤
@@ -402,6 +406,8 @@ class Posts extends ST_Auth_Controller{
 			$page = (!empty($page) && is_numeric($page)) ? intval($page) : 1;
 			$limit = 10;
 			$offset = ($page - 1) * $limit;
+			
+// 			var_dump($offset);
             
         	if($offset < 0){
 				redirect('admin/posts/manage');
@@ -410,8 +416,11 @@ class Posts extends ST_Auth_Controller{
 			//下面部分是没有传任何参数时,显示所有的文章
 			//得到文章,默认:$status=publish;$author_id=$this->user->uid;$limit=10;$offset=0;$category_filter=0;
 			$posts = $this->posts_mdl->get_posts('post',$status,$author_id,$limit,$offset,$category_filter,$title_filter);
+// 			var_dump($posts->result());
+
 			//计算文章数量
 			$posts_count = $this->posts_mdl->get_posts('post',$status,$author_id,10000,0,$category_filter,$title_filter)->num_rows();
+// 			var_dump($posts_count);
 			
             if($posts){
                 foreach($posts->result() as $post){
@@ -450,6 +459,140 @@ class Posts extends ST_Auth_Controller{
         }
     }
     
+    
+    /**
+     * 修改一个日志（与用户交互）
+     *
+     * @access private
+     * @return void
+     */
+    private function  _edit($pid){
+        
+        //根据唯一键获取单个内容信息,返回文章信息
+        $post_db = $this->posts_mdl->get_post_by_id('pid',$pid);
+        
+        if(empty($post_db))
+        {
+            show_error('发生错误：文章不存在或已被删除。');
+            exit();
+        }
+        
+        
+        //权限要至少为edit,并且只能修改自己的文章
+        if($this->user->group == 'contributor' && $this->user->uid != $post_db->authorId)
+        {
+            show_error('权限错误：你仅能修改自己的文章。');
+            exit();
+        }
+        
+        //根据post id获取分类数据,存储在metas_mdl的变量$metas中
+        $this->metas_mdl->get_metas($pid);
+        //得到文章的分类
+        $pop_categories = Common::array_flatten($this->metas_mdl->metas['category'],'mid');
+        //得到文章的标签
+        $pop_tags = Common::format_metas($this->metas_mdl->metas['tag'],',',FALSE);
+        
+        
+        $this->_data['parentPage'] = 'post';
+        $this->_data['currentPage'] = 'post';
+        $this->_data['page_title'] = '编辑文章：'.$post_db->title;
+        $this->_data['all_categories'] = $this->metas_mdl->list_metas('category');	//列出所有分类
+        $this->_data['all_tags'] = $this->metas_mdl->list_metas('tag');		//列出所有标签
+        $this->_data['pid'] = $pid;
+        $this->_data['title'] = $post_db->title;
+        $this->_data['text'] = $post_db->text;
+        $this->_data['post_category'] = $pop_categories;		//文章的分类
+        $this->_data['created'] = $post_db->created;
+        $this->_data['slug'] = $post_db->slug;
+        $this->_data['tags'] = $pop_tags;						//文章的标签
+        $this->_data['attachments'] = $this->posts_mdl->get_posts('attachment','unattached',$this->user->uid,100,0);		//附件
+        $this->_data['allow_comment'] = $post_db->allowComment;
+        $this->_data['allow_ping'] = $post_db->allowPing;
+        $this->_data['allow_feed'] = $post_db->allowFeed;
+        
+        
+        $this->_load_validation_rules();
+        $this->form_validation->month = date('n', $post_db->created);
+        $this->form_validation->day = date('j',$post_db->created);
+        $this->form_validation->year = date('Y', $post_db->created);
+        $this->form_validation->hour = date('G', $post_db->created);
+        $this->form_validation->minute = date('i', $post_db->created);
+        
+        
+        if($this->form_validation->run() === FALSE)
+        {
+            $this->load->view('admin/write_post',$this->_data);           
+        }
+        else
+        {
+            $this->_update_post($pid,$post_db);
+        }
+    }
+    
+    private function _update_post($pid,$exist_post)
+    {
+        /** 获取表单数据 */
+        $content = $this->_get_form_data();
+        /** 文章类型 */
+        $content['type'] = 'post';
+        /** 文章状态 */
+        $draft = $this->input->post('drarft',TRUE);
+        $content['status'] = $draft ?  'draft' : (($this->auth->exceed('editor',TRUE) && !$draft) ? 'pubish' : 'waiting');
+        
+        
+        $content['created'] = $this->_get_created();
+        
+        $update_struct = array(
+            'title'         =>  empty($content['title']) ? NULL : $content['title'],
+            'created'       =>  empty($content['created']) ? now() : $content['created'],
+            'modified'      =>  now(),
+            'text'          =>  empty($content['text']) ? NULL : $content['text'],
+            'order'         =>  empty($content['order']) ? 0 : intval($content['order']),
+            'authorId'      =>  isset($content['authorId']) ? $content['authorId'] : $this->user->uid,
+            'type'          =>  empty($content['type']) ? 'post' : $content['type'],
+            'status'        =>  empty($content['status']) ? 'publish' : $content['status'],
+            'allowComment'  =>  !empty($content['allowComment']) && 1 == $content['allowComment'] ? 1 : 0,
+            'allowPing'     =>  !empty($content['allowPing']) && 1 == $content['allowPing'] ? 1 : 0,
+            'allowFeed'     =>  !empty($content['allowFeed']) && 1 == $content['allowFeed'] ? 1 : 0
+        );
+        
+        /** 核心数据进主库 */
+        $updated_rows = $this->posts_mdl->update_post($pid, $update_struct);
+        
+        /** 应用缩略名 */
+        $this->_apply_slug($pid);
+        
+        if($updated_rows > 0)
+        {
+            /** 插入分类 */
+            $this->_set_categories($pid, $content['category'], 'publish' == $exist_post->status, 'publish' == $content['status']);
+            
+            /** 插入标签 */
+            $this->_set_tags($pid, empty($content['tags']) ? NULL : $content['tags'], 'publish' == $exist_post->status, 'publish' == $content['status']);
+            
+            /** 同步附件 */
+            $this->_attachment_related($pid,$content['attachment']);
+            
+        }
+        
+        $trackback = array_unique(preg_split("/(\r|\n|\r\n)/", trim($content['trackback'])));
+        if(!empty($trackback))
+        {
+            $this->_send_trackback($pid,$trackback);
+        }
+        
+        if($content['status'] == 'draft')
+        {
+            $this->session->set_flashdata('success', '草稿"'.$content['title'].'"已经保存');
+            redirect('admin/posts/write'.'/'.$pid);
+        }
+        else
+        {
+            $this->session->set_flashdata('success', '文章 <b>'.$content['title'].'</b> 修改成功');
+            redirect('admin/posts/manage');
+        }
+    }
+ 
 }
     
 
