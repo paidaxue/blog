@@ -470,6 +470,7 @@ class Posts extends ST_Auth_Controller{
         
         //根据唯一键获取单个内容信息,返回文章信息
         $post_db = $this->posts_mdl->get_post_by_id('pid',$pid);
+//         var_dump($post_db);  返回文章信息
         
         if(empty($post_db))
         {
@@ -537,7 +538,7 @@ class Posts extends ST_Auth_Controller{
         $content['type'] = 'post';
         /** 文章状态 */
         $draft = $this->input->post('drarft',TRUE);
-        $content['status'] = $draft ?  'draft' : (($this->auth->exceed('editor',TRUE) && !$draft) ? 'pubish' : 'waiting');
+        $content['status'] = $draft ?  'draft' : (($this->auth->exceed('editor',TRUE) && !$draft) ? 'publish' : 'waiting');
         
         
         $content['created'] = $this->_get_created();
