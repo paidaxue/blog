@@ -293,7 +293,7 @@ class Posts extends ST_Auth_Controller{
         
         $trackbacks = ($trackbacks) ? (is_array($trackbacks) ? $trackbacks : array($trackbacks)) : array();
         
-        $this->load->library('trackbrack');
+        $this->load->library('trackback');
         
         foreach ($trackbacks as $trackback)
         {
@@ -356,7 +356,7 @@ class Posts extends ST_Auth_Controller{
             
             //设置是否查看全部文章
 			$all_posts = $this->input->get('__all_posts',TRUE);
-			var_dump($status);//string 'publish' (length=7)
+// 			var_dump($status);//string 'publish' (length=7)
             
         	if(!empty($all_posts)){
 				
@@ -576,6 +576,7 @@ class Posts extends ST_Auth_Controller{
         }
         
         $trackback = array_unique(preg_split("/(\r|\n|\r\n)/", trim($content['trackback'])));
+
         if(!empty($trackback))
         {
             $this->_send_trackback($pid,$trackback);
