@@ -221,6 +221,7 @@ class Common{
            }
        }
        return preg_replace("/\<br\s*\/\>\s*\<\/p\>/is", '</p>', $string); 
+       
     }
     
 }
