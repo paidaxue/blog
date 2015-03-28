@@ -131,7 +131,100 @@ class Common{
     
         return $format;
     }
+    
+    /**
+     * 根据分割符的位置获取摘要
+     * @access string $string 输入串
+     * @param unknown $string
+     */
+    public static function get_excerpt($string)
+    {
+        /** 检查是否存在分割符标记 */
+        list($excerpt) = explode(ST_CONTENT_BREAK,$string);
+        
+        $excerpt = (empty($excerpt)) ? $string : $excerpt;
+        
+        $CI = &get_intance();
+        
+        /** 如果没有安装任何编辑器插件，则需程序自动分段 */
+        if(!$CI->plugin->check_hook_exist(ST_CORE_HOOK_EDITOR))
+        {
+            $excerpt = self::remove_paragraph($excerpt);
+            $excerpt = self::cut_paragraph($excerpt);
+        }
+        
+        return self::fix_html($excerpt);
+    }
+    
+    
+    /**
+     * 去掉html中的分段
+     *
+     * @access public
+     * @param string $html 输入串
+     * @return string
+     */
+    public static function remove_paragraph($html)
+    {
+        return trim(preg_replace(
+            array("/\s*<p>(.*?)<\/p>\s*/is", "/\s*<br\s*\/>\s*/is",
+                "/\s*<(" . self::PARAGRAPH_HTML_TAG . ")([^>]*)>/is", "/<\/(" . self::PARAGRAPH_HTML_TAG . ")>\s*/is", "/\s*\[\-\-break\-\-\]\s*/is"),
+            array("\n\\1\n", "\n", "\n\n<\\1\\2>", "</\\1>\n\n", "\n\n[--break--]\n\n"),
+            $html));
+    }
+    
+    public static function fix_html($string)
+    {
+        $starPos = strrpos($string,"<");
+        /**strrpos — 计算指定字符串在目标字符串中最后一次出现的位置*/
+        
+        if(false == $starPos)
+        {
+            return $string;
+        }
+        
+        $trimString = substr($string,$starPos);
+        /**substr — 返回字符串的子串*/
+        
+        if(false === strpos($trimString,">"))
+        {
+            $string = substr($string,0,$starPos);
+        }
+        
+        //非自闭合html标签列表
+	   preg_match_all("/<([_0-9a-zA-Z-\:]+)\s*([^>]*)>/is", $string, $startTags);
+	   preg_match_all("/<\/([_0-9a-zA-Z-\:]+)>/is", $string, $closeTags);
+	   
+       if(!empty($startTags[1]) && is_array($closeTags[1]));
+       {
+           /**krsort — 对数组按照键名逆向排序*/
+           krsort($startTags[1]);
+           $closeTagsIsArray = is_array($closeTags[1]);
+           foreach ($startTags[1] as $key=> $tag)
+           {
+               $attrLength = strlen($startTags[2][$key]);
+               if($attrLength >0 && "/" == trim($strartTags[2][$key][$attrLength-1]))
+               {
+                   continue;
+               }
+               if(!empty($closeTags[1]) && $closeTagsIsArray)
+               {
+                   if(false !== ($index = array_search($tag,$closeTags[1])))
+                   {
+                       unset($closeTags[1][$index]);
+                       continue;
+                   }
+               }
+               
+               $string .="</{$tag}>";
+               
+           }
+       }
+       return preg_replace("/\<br\s*\/\>\s*\<\/p\>/is", '</p>', $string); 
+    }
+    
 }
+
 
 
 /*
