@@ -5,6 +5,86 @@
 
 class Common{
     
+    /** 默认不解析的标签列表 */
+    const LOCKED_HTML_TAG = 'code|pre|script';
+    
+    /** 需要去除内部换行的标签 */
+    const ESCAPE_HTML_TAG = 'div|blockquote|object|pre|table|fieldset|tr|th|td|li|ol|ul|h[1-6]';
+    
+    /** 元素标签 */
+    const ELEMENT_HTML_TAG = 'div|blockquote|pre|td|li';
+    
+    /** 布局标签 */
+    const GRID_HTML_TAG = 'div|blockquote|pre|code|script|table|ol|ul';
+    
+    /** 独立段落标签 */
+    const PARAGRAPH_HTML_TAG = 'div|blockquote|pre|code|script|table|fieldset|ol|ul|h[1-6]';
+    
+    /**
+     * 锁定的代码块
+     *
+     * @access private
+     * @var array
+     */
+    private static $_lockedBlocks = array('<p></p>' => '');
+    
+    /**
+     * 锁定标签回调函数
+     *
+     * @access private
+     * @param array $matches 匹配的值
+     * @return string
+    */
+    public static function __lock_html(array $matches)
+    {
+        $guid = '<code>' . uniqid(time()) . '</code>';
+        self::$_lockedBlocks[$guid] = $matches[0];
+    
+        return $guid;
+    }
+    
+    
+    /**
+     * 根据count数目来输出字符
+     * <code>
+     * echo Common::split_by_count(20, 10, 20, 30, 40, 50);
+     * </code>
+     *
+     * @access public
+     * @return string
+     */
+    public static function split_by_count($count)
+    {
+        $sizes = func_get_args();
+        array_shift($sizes);
+    
+        foreach ($sizes as $size)
+        {
+            if ($count < $size)
+            {
+                return $size;
+            }
+        }
+    
+        return 0;
+    }
+    
+    
+    /**
+     * 按分割数输出字符串
+     *
+     * @access public
+     * @param string $param 需要输出的值
+     * @return integer
+     */
+    public function split($count)
+    {
+        $args = func_get_args();
+        array_unshift($args, $count);
+    
+        return call_user_func_array(array('Common', 'split_by_count'), $args);
+    }
+    
     //判断密码是否相等
     public static function hash_Validate($source,$target){
         return (self::do_hash($source,$target) == $target);
@@ -223,6 +303,180 @@ class Common{
        return preg_replace("/\<br\s*\/\>\s*\<\/p\>/is", '</p>', $string); 
        
     }
+    
+    public static function cut_paragraph($string,$pargraph = true)
+    {
+        $string = trim($string);
+        
+        if(empty($string))
+        {
+            return '';
+        }
+        
+        		/** 锁定标签 */
+		$string = preg_replace_callback("/<(" . self::LOCKED_HTML_TAG . ")[^>]*>.*?<\/\\1>/is", array('Common', '__lock_html'), $string);
+	
+		$string = @preg_replace("/\s*<(" . self::ELEMENT_HTML_TAG . ")([^>]*)>(.*?)<\/\\1>\s*/ise",
+				"str_replace('\\\"', '\"', '<\\1\\2>' . Common::cut_paragraph(trim('\\3'), false) . '</\\1>')", $string);
+		$string = @preg_replace("/<(" . self::ESCAPE_HTML_TAG . '|' . self::LOCKED_HTML_TAG . ")([^>]*)>(.*?)<\/\\1>/ise",
+				"str_replace('\\\"', '\"', '<\\1\\2>' . str_replace(array(\"\r\", \"\n\"), '', '\\3') . '</\\1>')", $string);
+		$string = @preg_replace("/<(" . self::GRID_HTML_TAG . ")([^>]*)>(.*?)<\/\\1>/is", "\n\n<\\1\\2>\\3</\\1>\n\n", $string);
+	
+		/** fix issue 197 */
+		$string = preg_replace("/\s*<p ([^>]*)>(.*?)<\/p>\s*/is", "\n\n<p \\1>\\2</p>\n\n", $string);
+	
+		/** 区分段落 */
+		$string = preg_replace("/\r*\n\r*/", "\n", $string);
+		
+		if($paragraph || false !== strpos($string, "\n\n"))
+		{
+		    $string = '<p>' . preg_replace("/\n{2,}/", "</p><p>", $string) . '</p>';
+		}
+        
+		$string = str_replace("\n", '<br />', $string);
+		
+		/** 去掉不需要的 */
+		$string = preg_replace("/<p><(" . self::ESCAPE_HTML_TAG . '|p|' . self::LOCKED_HTML_TAG
+		    . ")([^>]*)>(.*?)<\/\\1><\/p>/is", "<\\1\\2>\\3</\\1>", $string);
+		
+		return str_replace(array_keys(self::$_lockedBlocks), array_values(self::$_lockedBlocks), $string);    
+        
+    }
+    
+    /**
+     * 是否存在分割符标记
+     *
+     * @access public
+     * @param string $content 输入串
+     * @return bool
+     */
+    public static function has_break($content)
+    {
+        if(strpos($content,ST_CONTENT_BREAK) !== FALSE)
+        {
+            return TRUE;
+        }
+        
+        return FALSE;
+    }
+    
+    /**
+     * 输出头部feed meta信息
+     *
+     * @access public
+     * @param string $type 类型
+     * @param mixed $slug slug
+     * @param string $alt_title
+     * @return string
+     */
+    public static function render_feed_meta($type = 'default', $slug = NULL , $alt_title = '')
+    {
+        if(empty($type) || !in_array($type, array('default', 'post', 'category', 'tag')))
+        {
+            return;
+        }
+    
+        /** 初始化默认值 */
+        $feed_rss_url = site_url('feed');
+        $feed_atom_url = site_url('feed/atom');
+        $alt_title = empty($alt_title) ? setting_item('blog_title') : htmlspecialchars($alt_title);
+    
+        $parsed_feed = <<<EOT
+<link rel="alternate" type="application/rss+xml" href="{$feed_rss_url}" title="订阅 {$alt_title} 所有文章" />\r\n
+<link rel="alternate" type="application/rss+xml" href="{$feed_rss_url}/comments" title="订阅 {$alt_title} 所有评论" />\r\n
+EOT;
+    
+        if('default' === $type)
+        {
+            return $parsed_feed;
+        }
+        else
+        {
+            $title = '订阅';
+            	
+            switch($type)
+            {
+                case 'post':
+                    $title .= $alt_title . '下的评论';
+                    break;
+                case 'category':
+                    $title .= $alt_title . '分类下的文章';
+                    break;
+                case 'tag':
+                    $title .= $alt_title . '标签下的文章';
+                    break;
+            }
+            	
+            return <<<EOT
+<link rel="alternate" type="application/rss+xml" href="{$feed_rss_url}/{$type}/{$slug}" title="{$title}" />\r\n
+EOT;
+    
+        }
+    }
+    
+    /**
+     * 获取一个选项
+     *
+     * @access	public
+     * @return	mixed
+     */
+    function setting_item($item)
+    {
+        static $setting_item = array();
+    
+        if (!isset($setting_item[$item]))
+        {
+            $settings = &get_settings();
+    
+            if (!isset($settings[$item]))
+            {
+                return FALSE;
+            }
+    
+            $setting_item[$item] = $settings[$item];
+        }
+    
+        return $setting_item[$item];
+    }
+    
+/**
+ * 获取用户配置
+ *
+ * @access	public
+ * @return	array
+ */
+function &get_settings()
+{
+	static $user_settings;
+
+	if(!isset($user_settings))
+	{
+		$CI = &get_instance();
+
+		$CI->load->library('stcache');
+		//得到关于setting的缓存
+		$settings = $CI->stcache->get('settings');
+		//如果缓存里面没有,就从数据库中取
+		if(FALSE == $settings)
+		{
+			$query = $CI->db->get('settings');
+
+			foreach($query->result() as $row)
+			{
+				$settings[$row->name] = $row->value;
+			}
+
+			$query->free_result();
+
+			//把数据库中得到的,放入缓存中
+			$CI->stcache->set('settings', $settings);
+		}
+
+		$user_settings[0] = &$settings;
+	}
+	//返回缓存
+	return $user_settings[0];
+}
     
 }
 
