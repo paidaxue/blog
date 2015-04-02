@@ -11,6 +11,7 @@ class Home extends ST_Controller{
 	//当前页码
 	private $_current_page = 1;
 	
+	
 	//每页条目数
 	private $_limit = 5;
 	
