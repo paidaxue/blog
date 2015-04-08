@@ -11,7 +11,6 @@ class Home extends ST_Controller{
 	//当前页码
 	private $_current_page = 1;
 	
-	
 	//每页条目数
 	private $_limit = 5;
 	
@@ -39,11 +38,9 @@ class Home extends ST_Controller{
 	    $this->_init_pagination($page);
 	    
 	    $this->_posts = $this->posts_mdl->get_posts('post','publish',NULL,$this->_limit,$this->_offset)->result();
-// 	    var_dump($this->_posts[1]);
-	    
+
 	    $this->_total_count = $this->posts_mdl->get_posts('post','publish',NULL,10000,0)->num_rows();
-	    
-	    
+	    	  
 	    if(!empty($this->_posts))
 	    {
 	        $this->_prepare_posts();
@@ -54,14 +51,14 @@ class Home extends ST_Controller{
 	    
 		/** 页面初始化 */
 		$data['page_title'] = '首页';
-		$data['page_description'] = setting_item('blog_description');	//读取博客描述
-		$data['page_keywords'] = setting_item('blog_keywords');			//读取博客关键词
+// 		$data['page_description'] = setting_item('blog_description');	//读取博客描述
+// 		$data['page_keywords'] = setting_item('blog_keywords');			//读取博客关键词
 		$data['posts'] = $this->_posts;									//得到文章
 		$data['parsed_feed'] = Common::render_feed_meta();		//输出头部feed meta信息
 		$data['pagination'] = $this->_pagination;
 		
 		/** 加载主题下的页面 */
-// 		$this->load->view('index', $data);
+		$this->load->view('index', $data);
 	}
 	
 	//处理加工文章格式
@@ -102,7 +99,6 @@ class Home extends ST_Controller{
 	private function _init_pagination($current_page){
 	    //当前页
 	    $this->_current_page = ($current_page && is_numeric($current_page)) ? intval($current_page):1;
-	    var_dump($this->_current_page);
 	
 	    //每页多少项
 	    $page_size = setting_item('posts_page_size');
@@ -111,7 +107,8 @@ class Home extends ST_Controller{
 	
 	    /** 偏移量 */
 	    $this->_offset = ($this->_current_page - 1) * $this->_limit;
-	    var_dump($this->_offset);
+
+        echo ("dddd");
 	
 	    if($this->_offset < 0)
 	    {
